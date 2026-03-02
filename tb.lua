@@ -6,7 +6,7 @@ Triggerbot.__index = Triggerbot
 function Triggerbot.new()
     local self = setmetatable({}, Triggerbot)
     self.Enabled = false
-    self.Precision = 50 -- Precisión por defecto (0-100)
+    self.Precision = 100 -- Precisión por defecto (0-100)
     self.TeamCheck = false
     self.VisibleCheck = true
     self.WallCheck = false

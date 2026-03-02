@@ -1,359 +1,434 @@
--- TRIGGERBOT MODERNO - DA HOOD CON RANGO
+-- TRIGGERBOT - DA HOOD (VERSIÓN CORREGIDA)
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
-local enabled = false
-local precision = 50
-local wallCheck = false
-local knifeMode = true
-local cooldown = 0
-local range = 1000 -- Rango por defecto
-
--- Servicios
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- Variables
+local enabled = false
+local knifeCheck = true
+local forceFieldCheck = true
+local holdMode = true
+local precision = 50
+local triggerDelay = 1
+local maxDistance = 500 -- Rango en studs
+
+-- Variables para tecla personalizable
+local holdKey = Enum.UserInputType.MouseButton2 -- Click derecho por defecto
+local keyPressed = false
+local triggerActive = false
+local isSelectingKey = false
 
 -- GUI Principal
 local gui = Instance.new("ScreenGui")
-gui.Name = "TriggerBotModern"
+gui.Name = "TriggerBotGUI"
 gui.Parent = game.CoreGui
 gui.ResetOnSpawn = false
 
--- Frame principal con diseño moderno
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 320, 0, 380) -- Más grande para el rango
+main.Size = UDim2.new(0, 380, 0, 420)
 main.Position = UDim2.new(0, 50, 0, 50)
-main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Active = true
 main.Draggable = true
-main.ClipsDescendants = true
 main.Parent = gui
 
--- Sombra y efecto de borde
+-- Bordes redondeados
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
+corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = main
 
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(40, 40, 40)
-stroke.Thickness = 1
-stroke.Parent = main
-
--- Título con gradiente
-local titleFrame = Instance.new("Frame")
-titleFrame.Size = UDim2.new(1, 0, 0, 45)
-titleFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-titleFrame.BorderSizePixel = 0
-titleFrame.Parent = main
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 12)
-titleCorner.Parent = titleFrame
-
+-- Título
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -30, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "TRIGGERBOT PRO"
+title.Size = UDim2.new(1, 0, 0, 45)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+title.Text = "Trigger Bot"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = titleFrame
+title.TextSize = 20
+title.Parent = main
 
--- Botón de cerrar moderno
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Botón de cerrar
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -35, 0, 7)
-closeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -40, 0, 6)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 16
-closeBtn.Parent = titleFrame
+closeBtn.TextSize = 18
+closeBtn.Parent = title
 
 local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.CornerRadius = UDim.new(0, 6)
 closeCorner.Parent = closeBtn
 
--- Contenedor principal de controles
-local container = Instance.new("Frame")
-container.Size = UDim2.new(1, -30, 1, -60)
-container.Position = UDim2.new(0, 15, 0, 50)
-container.BackgroundTransparency = 1
-container.Parent = main
+-- Botón de minimizar
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 32, 0, 32)
+minimizeBtn.Position = UDim2.new(1, -80, 0, 6)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.Parent = title
 
--- Layout automático
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 6)
+minimizeCorner.Parent = minimizeBtn
+
+-- Contenedor principal con scroll
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, -20, 1, -55)
+scrollingFrame.Position = UDim2.new(0, 10, 0, 50)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.ScrollBarThickness = 6
+scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 70)
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
+scrollingFrame.Parent = main
+
 local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 15)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Parent = container
+layout.Parent = scrollingFrame
 
--- ===== TOGGLE PRINCIPAL =====
-local toggleFrame = Instance.new("Frame")
-toggleFrame.Size = UDim2.new(1, 0, 0, 50)
-toggleFrame.BackgroundTransparency = 1
-toggleFrame.LayoutOrder = 1
-toggleFrame.Parent = container
+-- ===== SECCIÓN TRIGGER BOT =====
+local triggerSection = Instance.new("Frame")
+triggerSection.Size = UDim2.new(1, 0, 0, 35)
+triggerSection.BackgroundTransparency = 1
+triggerSection.Parent = scrollingFrame
 
-local toggleLabel = Instance.new("TextLabel")
-toggleLabel.Size = UDim2.new(0.5, 0, 1, 0)
-toggleLabel.BackgroundTransparency = 1
-toggleLabel.Text = "TB STATUS"
-toggleLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
-toggleLabel.Font = Enum.Font.Gotham
-toggleLabel.TextSize = 14
-toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-toggleLabel.Parent = toggleFrame
+local triggerLine = Instance.new("Frame")
+triggerLine.Size = UDim2.new(1, 0, 0, 1)
+triggerLine.Position = UDim2.new(0, 0, 1, -1)
+triggerLine.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+triggerLine.Parent = triggerSection
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 80, 0, 35)
-toggleBtn.Position = UDim2.new(1, -80, 0, 7)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-toggleBtn.Text = "OFF"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 14
-toggleBtn.Parent = toggleFrame
+local triggerLabel = Instance.new("TextLabel")
+triggerLabel.Size = UDim2.new(1, 0, 1, 0)
+triggerLabel.BackgroundTransparency = 1
+triggerLabel.Text = "# Trigger Bot"
+triggerLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+triggerLabel.Font = Enum.Font.GothamBold
+triggerLabel.TextSize = 16
+triggerLabel.TextXAlignment = Enum.TextXAlignment.Left
+triggerLabel.Parent = triggerSection
 
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 8)
-toggleCorner.Parent = toggleBtn
-
--- ===== PRECISIÓN =====
-local precisionFrame = Instance.new("Frame")
-precisionFrame.Size = UDim2.new(1, 0, 0, 45)
-precisionFrame.BackgroundTransparency = 1
-precisionFrame.LayoutOrder = 2
-precisionFrame.Parent = container
-
-local precisionLabel = Instance.new("TextLabel")
-precisionLabel.Size = UDim2.new(1, 0, 0, 20)
-precisionLabel.BackgroundTransparency = 1
-precisionLabel.Text = "🎯 Precisión 50%"
-precisionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-precisionLabel.Font = Enum.Font.Gotham
-precisionLabel.TextSize = 13
-precisionLabel.TextXAlignment = Enum.TextXAlignment.Left
-precisionLabel.Parent = precisionFrame
-
-local precisionSlider = Instance.new("Frame")
-precisionSlider.Size = UDim2.new(1, 0, 0, 6)
-precisionSlider.Position = UDim2.new(0, 0, 0, 25)
-precisionSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-precisionSlider.Parent = precisionFrame
-
-local precisionSliderCorner = Instance.new("UICorner")
-precisionSliderCorner.CornerRadius = UDim.new(1, 0)
-precisionSliderCorner.Parent = precisionSlider
-
-local precisionFill = Instance.new("Frame")
-precisionFill.Size = UDim2.new(0.5, 0, 1, 0)
-precisionFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-precisionFill.Parent = precisionSlider
-
-local precisionFillCorner = Instance.new("UICorner")
-precisionFillCorner.CornerRadius = UDim.new(1, 0)
-precisionFillCorner.Parent = precisionFill
-
-local precisionButton = Instance.new("TextButton")
-precisionButton.Size = UDim2.new(1, 0, 1, 0)
-precisionButton.BackgroundTransparency = 1
-precisionButton.Text = ""
-precisionButton.Parent = precisionSlider
-
--- ===== RANGO =====
-local rangeFrame = Instance.new("Frame")
-rangeFrame.Size = UDim2.new(1, 0, 0, 45)
-rangeFrame.BackgroundTransparency = 1
-rangeFrame.LayoutOrder = 3
-rangeFrame.Parent = container
-
-local rangeLabel = Instance.new("TextLabel")
-rangeLabel.Size = UDim2.new(1, 0, 0, 20)
-rangeLabel.BackgroundTransparency = 1
-rangeLabel.Text = "📏 Rango 1000"
-rangeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-rangeLabel.Font = Enum.Font.Gotham
-rangeLabel.TextSize = 13
-rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
-rangeLabel.Parent = rangeFrame
-
--- Slider rango
-local rangeSlider = Instance.new("Frame")
-rangeSlider.Size = UDim2.new(1, 0, 0, 6)
-rangeSlider.Position = UDim2.new(0, 0, 0, 25)
-rangeSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-rangeSlider.Parent = rangeFrame
-
-local rangeSliderCorner = Instance.new("UICorner")
-rangeSliderCorner.CornerRadius = UDim.new(1, 0)
-rangeSliderCorner.Parent = rangeSlider
-
-local rangeFill = Instance.new("Frame")
-rangeFill.Size = UDim2.new(0.1, 0, 1, 0) -- 1000 de 10000 = 10%
-rangeFill.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-rangeFill.Parent = rangeSlider
-
-local rangeFillCorner = Instance.new("UICorner")
-rangeFillCorner.CornerRadius = UDim.new(1, 0)
-rangeFillCorner.Parent = rangeFill
-
-local rangeButton = Instance.new("TextButton")
-rangeButton.Size = UDim2.new(1, 0, 1, 0)
-rangeButton.BackgroundTransparency = 1
-rangeButton.Text = ""
-rangeButton.Parent = rangeSlider
-
--- ===== COOLDOWN =====
-local cooldownFrame = Instance.new("Frame")
-cooldownFrame.Size = UDim2.new(1, 0, 0, 45)
-cooldownFrame.BackgroundTransparency = 1
-cooldownFrame.LayoutOrder = 4
-cooldownFrame.Parent = container
-
-local cooldownLabel = Instance.new("TextLabel")
-cooldownLabel.Size = UDim2.new(1, 0, 0, 20)
-cooldownLabel.BackgroundTransparency = 1
-cooldownLabel.Text = "⚡ Cooldown 0.000s"
-cooldownLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-cooldownLabel.Font = Enum.Font.Gotham
-cooldownLabel.TextSize = 13
-cooldownLabel.TextXAlignment = Enum.TextXAlignment.Left
-cooldownLabel.Parent = cooldownFrame
-
-local cooldownSlider = Instance.new("Frame")
-cooldownSlider.Size = UDim2.new(1, 0, 0, 6)
-cooldownSlider.Position = UDim2.new(0, 0, 0, 25)
-cooldownSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-cooldownSlider.Parent = cooldownFrame
-
-local cooldownSliderCorner = Instance.new("UICorner")
-cooldownSliderCorner.CornerRadius = UDim.new(1, 0)
-cooldownSliderCorner.Parent = cooldownSlider
-
-local cooldownFill = Instance.new("Frame")
-cooldownFill.Size = UDim2.new(0, 0, 1, 0)
-cooldownFill.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
-cooldownFill.Parent = cooldownSlider
-
-local cooldownFillCorner = Instance.new("UICorner")
-cooldownFillCorner.CornerRadius = UDim.new(1, 0)
-cooldownFillCorner.Parent = cooldownFill
-
-local cooldownButton = Instance.new("TextButton")
-cooldownButton.Size = UDim2.new(1, 0, 1, 0)
-cooldownButton.BackgroundTransparency = 1
-cooldownButton.Text = ""
-cooldownButton.Parent = cooldownSlider
-
--- ===== BOTONES DE OPCIONES =====
-local optionsFrame = Instance.new("Frame")
-optionsFrame.Size = UDim2.new(1, 0, 0, 100)
-optionsFrame.BackgroundTransparency = 1
-optionsFrame.LayoutOrder = 5
-optionsFrame.Parent = container
-
--- Grid layout para los botones
-local gridLayout = Instance.new("UIGridLayout")
-gridLayout.CellSize = UDim2.new(0.5, -5, 0, 40)
-gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-gridLayout.FillDirection = Enum.FillDirection.Horizontal
-gridLayout.Parent = optionsFrame
-
--- Función para crear botones modernos
-local function createModernButton(text, color, parent)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 1, 0)
-    btn.BackgroundColor3 = color
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 13
-    btn.Parent = parent
+-- Función para crear checkboxes
+local function createCheckbox(text, default)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 28)
+    frame.BackgroundTransparency = 1
+    frame.Parent = scrollingFrame
     
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = btn
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 20, 0, 20)
+    checkbox.Position = UDim2.new(0, 0, 0.5, -10)
+    checkbox.BackgroundColor3 = default and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 50)
+    checkbox.BorderSizePixel = 0
+    checkbox.Text = ""
+    checkbox.Parent = frame
     
-    return btn
+    local checkCorner = Instance.new("UICorner")
+    checkCorner.CornerRadius = UDim.new(0, 4)
+    checkCorner.Parent = checkbox
+    
+    local checkMark = Instance.new("TextLabel")
+    checkMark.Size = UDim2.new(1, 0, 1, 0)
+    checkMark.BackgroundTransparency = 1
+    checkMark.Text = default and "✓" or ""
+    checkMark.TextColor3 = Color3.fromRGB(255, 255, 255)
+    checkMark.Font = Enum.Font.GothamBold
+    checkMark.TextSize = 16
+    checkMark.Parent = checkbox
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -28, 1, 0)
+    label.Position = UDim2.new(0, 28, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 240)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    return {frame = frame, checkbox = checkbox, checkMark = checkMark, value = default}
 end
 
--- Crear botones
-local wallBtn = createModernButton("🧱 WALL CHECK", Color3.fromRGB(40, 40, 40), optionsFrame)
-local knifeBtn = createModernButton("🔪 KNIFE MODE", Color3.fromRGB(40, 40, 40), optionsFrame)
+-- Checkboxes de Trigger Bot
+local enableTrigger = createCheckbox("Enable Trigger Bot", false)
+local knifeCheckbox = createCheckbox("Knife Check", true)
+local forceFieldCheckbox = createCheckbox("Force Field Check", true)
 
--- ===== FUNCIONALIDAD DE LAS BARRAS =====
+-- ===== CONFIGURACIÓN DE TECLA =====
+local keyFrame = Instance.new("Frame")
+keyFrame.Size = UDim2.new(1, 0, 0, 70)
+keyFrame.BackgroundTransparency = 1
+keyFrame.Parent = scrollingFrame
+
+local keyLabel = Instance.new("TextLabel")
+keyLabel.Size = UDim2.new(1, 0, 0, 25)
+keyLabel.BackgroundTransparency = 1
+keyLabel.Text = "Tecla de activación"
+keyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+keyLabel.Font = Enum.Font.Gotham
+keyLabel.TextSize = 14
+keyLabel.TextXAlignment = Enum.TextXAlignment.Left
+keyLabel.Parent = keyFrame
+
+-- Botón de modo (Hold/Toggle)
+local modeBtn = Instance.new("TextButton")
+modeBtn.Size = UDim2.new(0.48, 0, 0, 35)
+modeBtn.Position = UDim2.new(0, 0, 0, 30)
+modeBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+modeBtn.Text = "HOLD"
+modeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+modeBtn.Font = Enum.Font.GothamBold
+modeBtn.TextSize = 14
+modeBtn.Parent = keyFrame
+
+local modeCorner = Instance.new("UICorner")
+modeCorner.CornerRadius = UDim.new(0, 6)
+modeCorner.Parent = modeBtn
+
+-- Botón para seleccionar tecla
+local keySelectBtn = Instance.new("TextButton")
+keySelectBtn.Size = UDim2.new(0.48, 0, 0, 35)
+keySelectBtn.Position = UDim2.new(0.52, 0, 0, 30)
+keySelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+keySelectBtn.Text = "CLICK DERECHO"
+keySelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+keySelectBtn.Font = Enum.Font.Gotham
+keySelectBtn.TextSize = 13
+keySelectBtn.Parent = keyFrame
+
+local keyCorner = Instance.new("UICorner")
+keyCorner.CornerRadius = UDim.new(0, 6)
+keyCorner.Parent = keySelectBtn
+
+-- ===== SECCIÓN CONFIGURATION =====
+local configSection = Instance.new("Frame")
+configSection.Size = UDim2.new(1, 0, 0, 35)
+configSection.BackgroundTransparency = 1
+configSection.Parent = scrollingFrame
+
+local configLine = Instance.new("Frame")
+configLine.Size = UDim2.new(1, 0, 0, 1)
+configLine.Position = UDim2.new(0, 0, 1, -1)
+configLine.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+configLine.Parent = configSection
+
+local configLabel = Instance.new("TextLabel")
+configLabel.Size = UDim2.new(1, 0, 1, 0)
+configLabel.BackgroundTransparency = 1
+configLabel.Text = "# Configuration"
+configLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+configLabel.Font = Enum.Font.GothamBold
+configLabel.TextSize = 16
+configLabel.TextXAlignment = Enum.TextXAlignment.Left
+configLabel.Parent = configSection
+
+-- Función para crear sliders
+local function createSlider(text, value, min, max, suffix)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 50)
+    frame.BackgroundTransparency = 1
+    frame.Parent = scrollingFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.5, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 240)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0.5, -10, 0, 25)
+    valueLabel.Position = UDim2.new(0.5, 10, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = value .. (suffix or "")
+    valueLabel.TextColor3 = Color3.fromRGB(0, 150, 255)
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 14
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = frame
+    
+    local sliderBg = Instance.new("Frame")
+    sliderBg.Size = UDim2.new(1, 0, 0, 8)
+    sliderBg.Position = UDim2.new(0, 0, 0, 30)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    sliderBg.Parent = frame
+    
+    local sliderBgCorner = Instance.new("UICorner")
+    sliderBgCorner.CornerRadius = UDim.new(1, 0)
+    sliderBgCorner.Parent = sliderBg
+    
+    local percent = (value - min) / (max - min)
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    sliderFill.Parent = sliderBg
+    
+    local sliderFillCorner = Instance.new("UICorner")
+    sliderFillCorner.CornerRadius = UDim.new(1, 0)
+    sliderFillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Size = UDim2.new(1, 0, 1, 0)
+    sliderButton.BackgroundTransparency = 1
+    sliderButton.Text = ""
+    sliderButton.Parent = sliderBg
+    
+    return {frame = frame, sliderFill = sliderFill, valueLabel = valueLabel, value = value, min = min, max = max, suffix = suffix, button = sliderButton}
+end
+
+-- Sliders de Configuration
+local precisionSlider = createSlider("Precision", 50, 0, 100, "")
+local delaySlider = createSlider("Trigger Delay (ms)", 1, 0, 100, " ms")
+local distanceSlider = createSlider("Max Distance", 500, 0, 5000, "")
+
+-- ===== FUNCIONALIDAD DE CHECKBOXES =====
+enableTrigger.checkbox.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    enableTrigger.value = enabled
+    enableTrigger.checkbox.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 50)
+    enableTrigger.checkMark.Text = enabled and "✓" or ""
+end)
+
+knifeCheckbox.checkbox.MouseButton1Click:Connect(function()
+    knifeCheck = not knifeCheck
+    knifeCheckbox.value = knifeCheck
+    knifeCheckbox.checkbox.BackgroundColor3 = knifeCheck and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 50)
+    knifeCheckbox.checkMark.Text = knifeCheck and "✓" or ""
+end)
+
+forceFieldCheckbox.checkbox.MouseButton1Click:Connect(function()
+    forceFieldCheck = not forceFieldCheck
+    forceFieldCheckbox.value = forceFieldCheck
+    forceFieldCheckbox.checkbox.BackgroundColor3 = forceFieldCheck and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(45, 45, 50)
+    forceFieldCheckbox.checkMark.Text = forceFieldCheck and "✓" or ""
+end)
+
+-- ===== FUNCIONALIDAD DE MODO Y TECLA =====
+modeBtn.MouseButton1Click:Connect(function()
+    holdMode = not holdMode
+    modeBtn.Text = holdMode and "HOLD" or "TOGGLE"
+    modeBtn.BackgroundColor3 = holdMode and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(0, 150, 255)
+end)
+
+keySelectBtn.MouseButton1Click:Connect(function()
+    isSelectingKey = true
+    keySelectBtn.Text = "PRESIONA TECLA"
+    keySelectBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if isSelectingKey then
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            holdKey = input.KeyCode
+            keySelectBtn.Text = input.KeyCode.Name
+            keySelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            holdKey = Enum.UserInputType.MouseButton1
+            keySelectBtn.Text = "CLICK IZQUIERDO"
+            keySelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+            holdKey = Enum.UserInputType.MouseButton2
+            keySelectBtn.Text = "CLICK DERECHO"
+            keySelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+            holdKey = Enum.UserInputType.MouseButton3
+            keySelectBtn.Text = "CLICK MEDIO"
+            keySelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        end
+        isSelectingKey = false
+    end
+end)
+
+-- ===== FUNCIONALIDAD DE SLIDERS =====
 local draggingPrecision = false
-local draggingCooldown = false
-local draggingRange = false
+local draggingDelay = false
+local draggingDistance = false
 
--- Actualizar precisión
-local function updatePrecision(mouseX)
-    local bgPos = precisionSlider.AbsolutePosition.X
-    local bgSize = precisionSlider.AbsoluteSize.X
-    local percent = (mouseX - bgPos) / bgSize
-    percent = math.clamp(percent, 0, 1)
-    
-    precisionFill.Size = UDim2.new(percent, 0, 1, 0)
-    precision = math.floor(percent * 100)
-    precisionLabel.Text = "🎯 Precisión " .. precision .. "%"
-end
-
--- Actualizar rango (100 a 10000)
-local function updateRange(mouseX)
-    local bgPos = rangeSlider.AbsolutePosition.X
-    local bgSize = rangeSlider.AbsoluteSize.X
-    local percent = (mouseX - bgPos) / bgSize
-    percent = math.clamp(percent, 0, 1)
-    
-    rangeFill.Size = UDim2.new(percent, 0, 1, 0)
-    range = math.floor(100 + (percent * 9900)) -- 100 a 10000
-    rangeLabel.Text = "📏 Rango " .. range
-end
-
--- Actualizar cooldown
-local function updateCooldown(mouseX)
-    local bgPos = cooldownSlider.AbsolutePosition.X
-    local bgSize = cooldownSlider.AbsoluteSize.X
-    local percent = (mouseX - bgPos) / bgSize
-    percent = math.clamp(percent, 0, 1)
-    
-    cooldownFill.Size = UDim2.new(percent, 0, 1, 0)
-    cooldown = percent
-    cooldownLabel.Text = "⚡ Cooldown " .. string.format("%.3f", cooldown) .. "s"
-end
-
--- Eventos precisión
-precisionButton.MouseButton1Down:Connect(function(input)
+precisionSlider.button.MouseButton1Down:Connect(function(input)
     draggingPrecision = true
-    updatePrecision(input.Position.X)
+    local mouseX = input.Position.X
+    local bgPos = precisionSlider.button.AbsolutePosition.X
+    local bgSize = precisionSlider.button.AbsoluteSize.X
+    local percent = (mouseX - bgPos) / bgSize
+    percent = math.clamp(percent, 0, 1)
+    precisionSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    precision = math.floor(percent * 100)
+    precisionSlider.valueLabel.Text = precision
 end)
 
--- Eventos rango
-rangeButton.MouseButton1Down:Connect(function(input)
-    draggingRange = true
-    updateRange(input.Position.X)
+delaySlider.button.MouseButton1Down:Connect(function(input)
+    draggingDelay = true
+    local mouseX = input.Position.X
+    local bgPos = delaySlider.button.AbsolutePosition.X
+    local bgSize = delaySlider.button.AbsoluteSize.X
+    local percent = (mouseX - bgPos) / bgSize
+    percent = math.clamp(percent, 0, 1)
+    delaySlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    triggerDelay = math.floor(percent * 100)
+    delaySlider.valueLabel.Text = triggerDelay .. " ms"
 end)
 
--- Eventos cooldown
-cooldownButton.MouseButton1Down:Connect(function(input)
-    draggingCooldown = true
-    updateCooldown(input.Position.X)
+distanceSlider.button.MouseButton1Down:Connect(function(input)
+    draggingDistance = true
+    local mouseX = input.Position.X
+    local bgPos = distanceSlider.button.AbsolutePosition.X
+    local bgSize = distanceSlider.button.AbsoluteSize.X
+    local percent = (mouseX - bgPos) / bgSize
+    percent = math.clamp(percent, 0, 1)
+    distanceSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    maxDistance = math.floor(percent * 5000)
+    distanceSlider.valueLabel.Text = maxDistance
 end)
 
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement then
         local mousePos = UserInputService:GetMouseLocation()
+        
         if draggingPrecision then
-            updatePrecision(mousePos.X)
+            local bgPos = precisionSlider.button.AbsolutePosition.X
+            local bgSize = precisionSlider.button.AbsoluteSize.X
+            local percent = (mousePos.X - bgPos) / bgSize
+            percent = math.clamp(percent, 0, 1)
+            precisionSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            precision = math.floor(percent * 100)
+            precisionSlider.valueLabel.Text = precision
         end
-        if draggingRange then
-            updateRange(mousePos.X)
+        
+        if draggingDelay then
+            local bgPos = delaySlider.button.AbsolutePosition.X
+            local bgSize = delaySlider.button.AbsoluteSize.X
+            local percent = (mousePos.X - bgPos) / bgSize
+            percent = math.clamp(percent, 0, 1)
+            delaySlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            triggerDelay = math.floor(percent * 100)
+            delaySlider.valueLabel.Text = triggerDelay .. " ms"
         end
-        if draggingCooldown then
-            updateCooldown(mousePos.X)
+        
+        if draggingDistance then
+            local bgPos = distanceSlider.button.AbsolutePosition.X
+            local bgSize = distanceSlider.button.AbsoluteSize.X
+            local percent = (mousePos.X - bgPos) / bgSize
+            percent = math.clamp(percent, 0, 1)
+            distanceSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            maxDistance = math.floor(percent * 5000)
+            distanceSlider.valueLabel.Text = maxDistance
         end
     end
 end)
@@ -361,48 +436,40 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         draggingPrecision = false
-        draggingRange = false
-        draggingCooldown = false
+        draggingDelay = false
+        draggingDistance = false
     end
 end)
 
-precisionButton.MouseButton1Click:Connect(function()
-    local mousePos = UserInputService:GetMouseLocation()
-    updatePrecision(mousePos.X)
-end)
+-- ===== SISTEMA DE MINIMIZADO CON CTRL =====
+local guiVisible = true
 
-rangeButton.MouseButton1Click:Connect(function()
-    local mousePos = UserInputService:GetMouseLocation()
-    updateRange(mousePos.X)
-end)
 
-cooldownButton.MouseButton1Click:Connect(function()
-    local mousePos = UserInputService:GetMouseLocation()
-    updateCooldown(mousePos.X)
-end)
+local function isCtrlKey(input)
+    return input.KeyCode == Enum.KeyCode.RightControl
+end
 
--- ===== FUNCIONALIDAD DE BOTONES =====
-toggleBtn.MouseButton1Click:Connect(function()
-    enabled = not enabled
-    if enabled then
-        toggleBtn.Text = "ON"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    else
-        toggleBtn.Text = "OFF"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+UserInputService.InputBegan:Connect(function(input)
+ 
+    if input.UserInputType == Enum.UserInputType.Keyboard and isCtrlKey(input) then
+        -- Solo alternar la visibilidad, sin importar dónde está el mouse
+        guiVisible = not guiVisible
+        gui.Enabled = guiVisible
+        
+        -- Pequeño feedback visual en consola (opcional)
+        if guiVisible then
+            print("🔓 GUI abierta con CTRL")
+        else
+            print("🔒 GUI cerrada con CTRL")
+        end
+        return
     end
 end)
 
-wallBtn.MouseButton1Click:Connect(function()
-    wallCheck = not wallCheck
-    wallBtn.BackgroundColor3 = wallCheck and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(40, 40, 40)
-    wallBtn.Text = wallCheck and "🧱 WALL CHECK ON" or "🧱 WALL CHECK"
-end)
-
-knifeBtn.MouseButton1Click:Connect(function()
-    knifeMode = not knifeMode
-    knifeBtn.BackgroundColor3 = knifeMode and Color3.fromRGB(255, 165, 0) or Color3.fromRGB(40, 40, 40)
-    knifeBtn.Text = knifeMode and "🔪 KNIFE MODE ON" or "🔪 KNIFE MODE"
+-- El botón de minimizar también funciona
+minimizeBtn.MouseButton1Click:Connect(function()
+    guiVisible = false
+    gui.Enabled = false
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
@@ -410,22 +477,38 @@ closeBtn.MouseButton1Click:Connect(function()
     enabled = false
 end)
 
--- ===== FUNCIÓN DE VISIBILIDAD =====
-local function isTargetVisible(targetPart)
-    if not wallCheck then return true end
-    
-    local character = player.Character
-    if not character or not character:FindFirstChild("Head") then return false end
-    
-    local camera = workspace.CurrentCamera
-    local origin = character.Head.Position
-    local direction = (targetPart.Position - origin).Unit * range -- Usar el rango del slider
-    
-    local ray = Ray.new(origin, direction)
-    local hit = workspace:FindPartOnRayWithIgnoreList(ray, {character, camera})
-    
-    return hit and hit:IsDescendantOf(targetPart.Parent)
+-- ===== SISTEMA DE ACTIVACIÓN POR TECLA (CORREGIDO) =====
+local function isKeyPressed(input)
+    if typeof(holdKey) == "EnumItem" then
+        return input.UserInputType == holdKey
+    else
+        return input.KeyCode == holdKey
+    end
 end
+
+UserInputService.InputBegan:Connect(function(input)
+    if isKeyPressed(input) then
+        keyPressed = true
+        if holdMode then
+            -- En HOLD mode: activa mientras está presionado
+            triggerActive = true
+        else
+            -- En TOGGLE mode: cambia el estado con cada presión
+            triggerActive = not triggerActive
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if isKeyPressed(input) then
+        keyPressed = false
+        if holdMode then
+            -- En HOLD mode: desactiva cuando se suelta
+            triggerActive = false
+        end
+        -- En TOGGLE mode: no hace nada al soltar
+    end
+end)
 
 -- ===== FUNCIÓN PARA DETECTAR CUCHILLO =====
 local function hasKnifeEquipped()
@@ -435,22 +518,35 @@ local function hasKnifeEquipped()
     local tool = character:FindFirstChildOfClass("Tool")
     if tool then
         local toolName = tool.Name:lower()
-        if toolName:find("knife") or toolName == "Knife" then
+        if toolName:find("knife") or toolName == "knife" then
             return true
         end
     end
     return false
 end
 
--- ===== VARIABLE PARA CONTROLAR EL LTIMO DISPARO =====
+-- ===== FUNCIÓN PARA CALCULAR DISTANCIA =====
+local function getDistanceFromTarget(targetPart)
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return math.huge end
+    
+    local rootPart = character.HumanoidRootPart
+    return (rootPart.Position - targetPart.Position).Magnitude
+end
+
+-- ===== FUNCIÓN PRINCIPAL DEL TRIGGERBOT (CORREGIDA) =====
 local lastShotTime = 0
 
--- ===== FUNCIoN PRINCIPAL DEL TRIGGERBOT =====
 RunService.Heartbeat:Connect(function()
-    if not enabled then return end
+    -- SOLO dispara si:
+    -- 1. El triggerbot está habilitado por el checkbox O la tecla está activa
+    -- 2. Enable Trigger Bot debe estar activado para que funcione con tecla
+    local shouldTrigger = enabled and triggerActive
+    
+    if not shouldTrigger then return end
     
     local currentTime = tick()
-    if currentTime - lastShotTime < cooldown then
+    if currentTime - lastShotTime < (triggerDelay / 1000) then
         return
     end
     
@@ -460,25 +556,26 @@ RunService.Heartbeat:Connect(function()
     local model = target.Parent
     if not model then return end
     
-    -- Verificar distancia
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local distance = (character.HumanoidRootPart.Position - target.Position).Magnitude
-        if distance > range then
-            return
-        end
+    -- VERIFICACIÓN DE RANGO
+    local distance = getDistanceFromTarget(target)
+    if distance > maxDistance then
+        return -- Fuera de rango, no dispara
     end
     
     local hum = model:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     
-    local plr = game:GetService("Players"):GetPlayerFromCharacter(model)
+    local plr = Players:GetPlayerFromCharacter(model)
     if not plr or plr == player then return end
     
-    if not isTargetVisible(target) then return end
-    
-    if knifeMode and hasKnifeEquipped() then
+    -- Knife Check
+    if knifeCheck and hasKnifeEquipped() then
         return
+    end
+    
+    -- Force Field Check 
+    if forceFieldCheck then
+        -- Aquí iría la lógica de force field si existe
     end
     
     if math.random(1, 100) <= precision then
@@ -486,3 +583,13 @@ RunService.Heartbeat:Connect(function()
         lastShotTime = currentTime
     end
 end)
+
+-- ===== MENSAJE DE INICIO =====
+print("✅ TRIGGERBOT CARGADO")
+print("📏 Max Distance: " .. maxDistance .. " studs")
+print("🎯 Precision: " .. precision .. "%")
+print("⚡ Delay: " .. triggerDelay .. "ms")
+print("🔑 Tecla: " .. keySelectBtn.Text)
+print("🔄 Modo: " .. (holdMode and "HOLD (dispara mientras presionas)" or "TOGGLE (dispara hasta que presiones otra vez)"))
+print("⌨️ CTRL para abrir/cerrar la GUI")
+print("⚠️ IMPORTANTE: Debes tener 'Enable Trigger Bot' ACTIVADO y presionar la tecla para disparar")

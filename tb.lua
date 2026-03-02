@@ -445,7 +445,7 @@ end)
 local guiVisible = true
 
 local function isCtrlKey(input)
-    return input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl
+    return input.KeyCode == Enum.KeyCode.RightControl
 end
 
 UserInputService.InputBegan:Connect(function(input)

@@ -10,7 +10,7 @@ function Triggerbot.new()
     self.TeamCheck = false
     self.VisibleCheck = true
     self.WallCheck = false
-    self.Range = 1000 -- Rango máximo en studs
+    self.Range = 900 -- Rango máximo en studs
     self.AimAnywhere = true -- Siempre true, dispara en cualquier parte
     self.Dragging = false
     

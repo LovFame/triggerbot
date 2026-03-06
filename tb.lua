@@ -738,8 +738,6 @@ enableTrigger.checkbox.MouseButton1Click:Connect(function()
     TweenService:Create(enableTrigger.checkbox, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
     TweenService:Create(enableTrigger.checkGlow, TweenInfo.new(0.3), {Visible = enabled}):Play()
     enableTrigger.checkMark.Text = enabled and "✓" or ""
-    
-    showNotification("Trigger Bot", enabled and "✅ ACTIVADO" or "❌ DESACTIVADO", 2, enabled and "success" or "error")
 end)
 
 knifeCheckbox.checkbox.MouseButton1Click:Connect(function()

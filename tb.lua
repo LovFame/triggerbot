@@ -1,4 +1,6 @@
--- TRIGGERBOT
+-- TRIGGERBOT + HITBOX EXPANDER (INTEGRADO)
+-- by FAME
+
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +10,7 @@ local TweenService = game:GetService("TweenService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local camera = workspace.CurrentCamera
 
--- Variables
+-- ==================== VARIABLES TRIGGERBOT ====================
 local enabled = false
 local knifeCheck = true
 local forceFieldCheck = false
@@ -17,21 +19,103 @@ local precision = 50
 local triggerDelay = 1
 local maxDistance = 500
 
--- Variables para tecla personalizable
+
 local holdKey = Enum.UserInputType.MouseButton2 
 local keyPressed = false
 local triggerActive = false
 local isSelectingKey = false
 local guiVisible = true
 
--- Variables para efectos
+-- 
 local notificationDuration = 2
 local currentNotifications = {}
 
--- Variable para controlar el disparo
+-- Shoot control
 local canShoot = true
 
--- GUI Principal
+-- ==================== VARIABLE HITBOX EXPANDER ====================
+getgenv().hitboxEnabled = false
+getgenv().hitboxTeamcheck = false
+getgenv().hitboxSizeX = 4.5
+getgenv().hitboxSizeY = 4.5
+getgenv().hitboxSizeZ = 4.5
+getgenv().hitboxTransparency = 0.85
+getgenv().hitboxRefreshEnabled = false
+getgenv().hitboxRefreshInterval = 5
+
+-- SAVE ORIGINAL SIZE
+local originalSizes = {}
+
+-- ==================== FUNCTIONS FL HITBOX EXPANDER ====================
+local function applyHitboxToPlayer(p)
+    if not getgenv().hitboxEnabled then return end
+    if p == player then return end
+    if not p.Character then return end
+
+    -- Team check
+    if getgenv().hitboxTeamcheck and p.Team == player.Team then
+        return
+    end
+
+    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+     
+        if not originalSizes[p] then
+            originalSizes[p] = hrp.Size
+        end
+      
+        hrp.Size = Vector3.new(getgenv().hitboxSizeX, getgenv().hitboxSizeY, getgenv().hitboxSizeZ)
+        hrp.Transparency = getgenv().hitboxTransparency
+        hrp.CanCollide = false
+    end
+end
+
+local function restoreOriginalSize(p)
+    if originalSizes[p] and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        p.Character.HumanoidRootPart.Size = originalSizes[p]
+        p.Character.HumanoidRootPart.Transparency = 1
+        originalSizes[p] = nil
+    end
+end
+
+local function applyHitboxToAll()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        applyHitboxToPlayer(plr)
+    end
+end
+
+local function restoreAllOriginal()
+    for plr, _ in pairs(originalSizes) do
+        restoreOriginalSize(plr)
+    end
+    originalSizes = {}
+end
+
+-- Newplayers conect
+local function setupHitboxConnections(plr)
+    plr.CharacterAdded:Connect(function()
+        task.wait(0.1)
+        applyHitboxToPlayer(plr)
+    end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    setupHitboxConnections(plr)
+end
+
+Players.PlayerAdded:Connect(setupHitboxConnections)
+
+-- Refresh
+coroutine.wrap(function()
+    while true do
+        if getgenv().hitboxEnabled and getgenv().hitboxRefreshEnabled then
+            applyHitboxToAll()
+        end
+        task.wait(getgenv().hitboxRefreshInterval)
+    end
+end)()
+
+-- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
 gui.Name = "TriggerBotGUI"
 gui.Parent = game:FindFirstChild("CoreGui") or game.Players.LocalPlayer.PlayerGui
@@ -43,8 +127,8 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- MAIN FRAME
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 400, 0, 480)  -- Altura reducida porque quitamos la sección hitbox
-main.Position = UDim2.new(0.5, -200, 0.5, -240)
+main.Size = UDim2.new(0, 400, 0, 680)
+main.Position = UDim2.new(0.5, -200, 0.5, -340)
 main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 main.BorderSizePixel = 0
 main.Active = true
@@ -54,7 +138,7 @@ main.ClipsDescendants = true
 main.ZIndex = 2
 main.Visible = true
 
--- Sombra
+--
 local shadow = Instance.new("ImageLabel")
 shadow.Size = UDim2.new(1, 30, 1, 30)
 shadow.Position = UDim2.new(0, -15, 0, -15)
@@ -132,7 +216,7 @@ local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 38, 0, 38)
 closeBtn.Position = UDim2.new(1, -48, 0, 11)
 closeBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-closeBtn.Text = "✕"
+closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 22
@@ -222,7 +306,7 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
 end)
 
--- = SECCION TRIGGER BOT =
+-- ==================== TRIGGER BOT ====================
 local triggerSection = Instance.new("Frame")
 triggerSection.Size = UDim2.new(1, 0, 0, 45)
 triggerSection.BackgroundTransparency = 1
@@ -250,7 +334,7 @@ triggerLineCorner.Parent = triggerLineGlow
 local triggerLabel = Instance.new("TextLabel")
 triggerLabel.Size = UDim2.new(1, -40, 1, 0)
 triggerLabel.BackgroundTransparency = 1
-triggerLabel.Text = "⚡ TRIGGER BOT"
+triggerLabel.Text = "🐱‍👤 TRIGGER BOT"
 triggerLabel.TextColor3 = Color3.fromRGB(0, 150, 255)
 triggerLabel.Font = Enum.Font.GothamBold
 triggerLabel.TextSize = 20
@@ -417,7 +501,7 @@ local keySelectBtn = Instance.new("TextButton")
 keySelectBtn.Size = UDim2.new(0.48, 0, 0, 45)
 keySelectBtn.Position = UDim2.new(0.52, 0, 0, 35)
 keySelectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-keySelectBtn.Text = "CLICK DERECHO"
+keySelectBtn.Text = "RIGHT CLICK (DEFAULT)"
 keySelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 keySelectBtn.Font = Enum.Font.Gotham
 keySelectBtn.TextSize = 14
@@ -607,7 +691,260 @@ local precisionSlider = createSlider("Precision", 50, 0, 100, "%", Color3.fromRG
 local delaySlider = createSlider("Trigger Delay", 1, 0, 100, "ms", Color3.fromRGB(255, 150, 0))
 local distanceSlider = createSlider("Max Distance", 500, 0, 5000, "", Color3.fromRGB(200, 100, 255))
 
--- Función para mostrar notificaciones
+-- ==================== HITBOX EXPANDER ====================
+local hitboxSection = Instance.new("Frame")
+hitboxSection.Size = UDim2.new(1, 0, 0, 45)
+hitboxSection.BackgroundTransparency = 1
+hitboxSection.Parent = scrollingFrame
+hitboxSection.ZIndex = 4
+
+local hitboxLine = Instance.new("Frame")
+hitboxLine.Size = UDim2.new(0.3, 0, 0, 3)
+hitboxLine.Position = UDim2.new(0, 0, 1, -3)
+hitboxLine.BackgroundColor3 = Color3.fromRGB(255, 70, 200)
+hitboxLine.Parent = hitboxSection
+hitboxLine.ZIndex = 4
+
+local hitboxLineGlow = Instance.new("Frame")
+hitboxLineGlow.Size = UDim2.new(1, 0, 1, 0)
+hitboxLineGlow.BackgroundColor3 = Color3.fromRGB(255, 70, 200)
+hitboxLineGlow.BackgroundTransparency = 0.7
+hitboxLineGlow.Parent = hitboxLine
+hitboxLineGlow.ZIndex = 4
+
+local hitboxLineCorner = Instance.new("UICorner")
+hitboxLineCorner.CornerRadius = UDim.new(1, 0)
+hitboxLineCorner.Parent = hitboxLineGlow
+
+local hitboxLabel = Instance.new("TextLabel")
+hitboxLabel.Size = UDim2.new(1, -40, 1, 0)
+hitboxLabel.BackgroundTransparency = 1
+hitboxLabel.Text = "📦 HITBOX EXPANDER"
+hitboxLabel.TextColor3 = Color3.fromRGB(255, 70, 200)
+hitboxLabel.Font = Enum.Font.GothamBold
+hitboxLabel.TextSize = 20
+hitboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+hitboxLabel.Parent = hitboxSection
+hitboxLabel.ZIndex = 4
+
+local hitboxIcon = Instance.new("TextLabel")
+hitboxIcon.Size = UDim2.new(0, 40, 1, 0)
+hitboxIcon.Position = UDim2.new(1, -40, 0, 0)
+hitboxIcon.BackgroundTransparency = 1
+hitboxIcon.Text = "🎯"
+hitboxIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+hitboxIcon.Font = Enum.Font.GothamBold
+hitboxIcon.TextSize = 24
+hitboxIcon.Parent = hitboxSection
+hitboxIcon.ZIndex = 4
+
+-- Checkbox: Habilitar hitbox
+local enableHitbox = createCheckbox("Enable Hitbox Expander", false)
+enableHitbox.checkbox.MouseButton1Click:Connect(function()
+    getgenv().hitboxEnabled = not getgenv().hitboxEnabled
+    enableHitbox.value = getgenv().hitboxEnabled
+    
+    local targetColor = getgenv().hitboxEnabled and Color3.fromRGB(255, 70, 200) or Color3.fromRGB(45, 45, 50)
+    TweenService:Create(enableHitbox.checkbox, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(enableHitbox.checkGlow, TweenInfo.new(0.3), {Visible = getgenv().hitboxEnabled}):Play()
+    enableHitbox.checkMark.Text = getgenv().hitboxEnabled and "✓" or ""
+    
+    if getgenv().hitboxEnabled then
+        applyHitboxToAll()
+        showNotification("Hitbox", "🟢 ENABLED", 2, "success")
+    else
+        restoreAllOriginal()
+        showNotification("Hitbox", "🔴 DISABLED", 2, "error")
+    end
+end)
+
+-- Checkbox: Team check
+local teamcheckHitbox = createCheckbox("Team Check (only enemies)", false)
+teamcheckHitbox.checkbox.MouseButton1Click:Connect(function()
+    getgenv().hitboxTeamcheck = not getgenv().hitboxTeamcheck
+    teamcheckHitbox.value = getgenv().hitboxTeamcheck
+    
+    local targetColor = getgenv().hitboxTeamcheck and Color3.fromRGB(255, 70, 200) or Color3.fromRGB(45, 45, 50)
+    TweenService:Create(teamcheckHitbox.checkbox, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(teamcheckHitbox.checkGlow, TweenInfo.new(0.3), {Visible = getgenv().hitboxTeamcheck}):Play()
+    teamcheckHitbox.checkMark.Text = getgenv().hitboxTeamcheck and "✓" or ""
+    
+    if getgenv().hitboxEnabled then
+        -- teamcheck effect replic
+        restoreAllOriginal()
+        applyHitboxToAll()
+    end
+end)
+
+-- Sliders for size x y z
+local sizeXSlider = createSlider("Size X", 5, 1, 20, "", Color3.fromRGB(255, 70, 200))
+local draggingSizeX = false
+sizeXSlider.button.MouseButton1Down:Connect(function(input)
+    draggingSizeX = true
+    local function update()
+        local percent = (UserInputService:GetMouseLocation().X - sizeXSlider.button.AbsolutePosition.X) / sizeXSlider.button.AbsoluteSize.X
+        percent = math.clamp(percent, 0, 1)
+        sizeXSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        local val = math.floor(percent * 19) + 1  -- 1 a 20
+        getgenv().hitboxSizeX = val
+        sizeXSlider.valueLabel.Text = val
+        if getgenv().hitboxEnabled then
+            applyHitboxToAll()
+        end
+    end
+    update()
+    local conn
+    conn = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and draggingSizeX then
+            update()
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and draggingSizeX then
+            draggingSizeX = false
+            conn:Disconnect()
+        end
+    end)
+end)
+
+local sizeYSlider = createSlider("Size Y", 5, 1, 20, "", Color3.fromRGB(255, 70, 200))
+local draggingSizeY = false
+sizeYSlider.button.MouseButton1Down:Connect(function(input)
+    draggingSizeY = true
+    local function update()
+        local percent = (UserInputService:GetMouseLocation().X - sizeYSlider.button.AbsolutePosition.X) / sizeYSlider.button.AbsoluteSize.X
+        percent = math.clamp(percent, 0, 1)
+        sizeYSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        local val = math.floor(percent * 19) + 1
+        getgenv().hitboxSizeY = val
+        sizeYSlider.valueLabel.Text = val
+        if getgenv().hitboxEnabled then
+            applyHitboxToAll()
+        end
+    end
+    update()
+    local conn
+    conn = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and draggingSizeY then
+            update()
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and draggingSizeY then
+            draggingSizeY = false
+            conn:Disconnect()
+        end
+    end)
+end)
+
+local sizeZSlider = createSlider("Size Z", 5, 1, 20, "", Color3.fromRGB(255, 70, 200))
+local draggingSizeZ = false
+sizeZSlider.button.MouseButton1Down:Connect(function(input)
+    draggingSizeZ = true
+    local function update()
+        local percent = (UserInputService:GetMouseLocation().X - sizeZSlider.button.AbsolutePosition.X) / sizeZSlider.button.AbsoluteSize.X
+        percent = math.clamp(percent, 0, 1)
+        sizeZSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        local val = math.floor(percent * 19) + 1
+        getgenv().hitboxSizeZ = val
+        sizeZSlider.valueLabel.Text = val
+        if getgenv().hitboxEnabled then
+            applyHitboxToAll()
+        end
+    end
+    update()
+    local conn
+    conn = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and draggingSizeZ then
+            update()
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and draggingSizeZ then
+            draggingSizeZ = false
+            conn:Disconnect()
+        end
+    end)
+end)
+
+-- Slider for opacity
+local opacitySlider = createSlider("Opacity", 0.7, 0, 1, "", Color3.fromRGB(255, 70, 200))
+opacitySlider.valueLabel.Text = "0.7"
+local draggingOpacity = false
+opacitySlider.button.MouseButton1Down:Connect(function(input)
+    draggingOpacity = true
+    local function update()
+        local percent = (UserInputService:GetMouseLocation().X - opacitySlider.button.AbsolutePosition.X) / opacitySlider.button.AbsoluteSize.X
+        percent = math.clamp(percent, 0, 1)
+        opacitySlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        local val = percent  -- 0 - 1
+        getgenv().hitboxTransparency = val
+        opacitySlider.valueLabel.Text = string.format("%.2f", val)
+        if getgenv().hitboxEnabled then
+            applyHitboxToAll()
+        end
+    end
+    update()
+    local conn
+    conn = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and draggingOpacity then
+            update()
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and draggingOpacity then
+            draggingOpacity = false
+            conn:Disconnect()
+        end
+    end)
+end)
+
+-- Checkbox: Refresco automático
+local refreshCheck = createCheckbox("Auto Refresh (fix respawn)", false)
+refreshCheck.checkbox.MouseButton1Click:Connect(function()
+    getgenv().hitboxRefreshEnabled = not getgenv().hitboxRefreshEnabled
+    refreshCheck.value = getgenv().hitboxRefreshEnabled
+    
+    local targetColor = getgenv().hitboxRefreshEnabled and Color3.fromRGB(255, 70, 200) or Color3.fromRGB(45, 45, 50)
+    TweenService:Create(refreshCheck.checkbox, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(refreshCheck.checkGlow, TweenInfo.new(0.3), {Visible = getgenv().hitboxRefreshEnabled}):Play()
+    refreshCheck.checkMark.Text = getgenv().hitboxRefreshEnabled and "✓" or ""
+    
+    showNotification("Auto Refresh", getgenv().hitboxRefreshEnabled and "✅ Enabled" or "❌ Disabled", 2, "info")
+end)
+
+-- Slider for refresh interval
+local intervalSlider = createSlider("Refresh Interval (s)", 1, 0.1, 15, "s", Color3.fromRGB(255, 70, 200))
+intervalSlider.valueLabel.Text = "1.0s"
+local draggingInterval = false
+intervalSlider.button.MouseButton1Down:Connect(function(input)
+    draggingInterval = true
+    local function update()
+        local percent = (UserInputService:GetMouseLocation().X - intervalSlider.button.AbsolutePosition.X) / intervalSlider.button.AbsoluteSize.X
+        percent = math.clamp(percent, 0, 1)
+        intervalSlider.sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        local val = 0.1 + percent * 14.9  -- rango 0.1 a 15
+        getgenv().hitboxRefreshInterval = val
+        intervalSlider.valueLabel.Text = string.format("%.1fs", val)
+    end
+    update()
+    local conn
+    conn = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and draggingInterval then
+            update()
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and draggingInterval then
+            draggingInterval = false
+            conn:Disconnect()
+        end
+    end)
+end)
+
+-- ==================== hitboxencd ====================
+
+-- FUNTION NOTIFY MAKER
 local function showNotification(title, message, duration, type)
     duration = duration or notificationDuration
     
@@ -708,7 +1045,7 @@ local function showNotification(title, message, duration, type)
     end
 end
 
--- Eventos de checkboxes
+-- Events checkbox tb
 enableTrigger.checkbox.MouseButton1Click:Connect(function()
     enabled = not enabled
     enableTrigger.value = enabled
@@ -718,7 +1055,7 @@ enableTrigger.checkbox.MouseButton1Click:Connect(function()
     TweenService:Create(enableTrigger.checkGlow, TweenInfo.new(0.3), {Visible = enabled}):Play()
     enableTrigger.checkMark.Text = enabled and "✓" or ""
     
-    showNotification("Trigger Bot", enabled and "✅ ACTIVADO" or "❌ DESACTIVADO", 2, enabled and "success" or "error")
+    showNotification("Trigger Bot", enabled and "✅ ENABLED" or "❌ DISABLED", 2, enabled and "success" or "error")
 end)
 
 knifeCheckbox.checkbox.MouseButton1Click:Connect(function()
@@ -763,7 +1100,7 @@ keySelectBtn.MouseButton1Click:Connect(function()
     
     keySelectBtn.Text = "🎯 PRESIONA TECLA"
     
-    showNotification("KEYBIND", "Presiona cualquier tecla", 3, "info")
+    showNotification("KEYBIND", "PRESS ANY KEY!", 5, "info")
 end)
 
 UserInputService.InputBegan:Connect(function(input)
@@ -773,13 +1110,13 @@ UserInputService.InputBegan:Connect(function(input)
             keySelectBtn.Text = "⌨️ " .. input.KeyCode.Name
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdKey = Enum.UserInputType.MouseButton1
-            keySelectBtn.Text = "🖱️ CLICK IZQUIERDO"
+            keySelectBtn.Text = "🖱️ LEFT CLICK"
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
             holdKey = Enum.UserInputType.MouseButton2
-            keySelectBtn.Text = "🖱️ CLICK DERECHO"
+            keySelectBtn.Text = "🖱️ RIGHT CLICK"
         elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
             holdKey = Enum.UserInputType.MouseButton3
-            keySelectBtn.Text = "🖱️ CLICK MEDIO"
+            keySelectBtn.Text = "🖱️ MIDDLE CLICK"
         end
         
         TweenService:Create(keySelectBtn, TweenInfo.new(0.2), {
@@ -793,7 +1130,7 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- Sliders dragging
+-- Sliders dragging (Triggerbot)
 local draggingPrecision = false
 local draggingDelay = false
 local draggingDistance = false
@@ -890,7 +1227,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Control de visibilidad de GUI con CTRL
+-- Visiblidity control w right control
 local function isCtrlKey(input)
     return input.KeyCode == Enum.KeyCode.RightControl
 end
@@ -902,10 +1239,10 @@ UserInputService.InputBegan:Connect(function(input)
         if guiVisible then
             main.Visible = true
             TweenService:Create(main, TweenInfo.new(0.6, Enum.EasingStyle.Back), {
-                Size = UDim2.new(0, 400, 0, 480),
+                Size = UDim2.new(0, 400, 0, 680),
                 BackgroundTransparency = 0,
             }):Play()
-            showNotification("GUI", "🟢 INTERFAZ ABIERTA", 2, "success")
+            showNotification("GUI", "🟢 OPEN INTERFACE", 2, "success")
         else
             TweenService:Create(main, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {
                 Size = UDim2.new(0, 0, 0, 0),
@@ -941,18 +1278,18 @@ closeBtn.MouseButton1Click:Connect(function()
     enabled = false
 end)
 
--- Animación de entrada inicial
+-- Animation
 main.Size = UDim2.new(0, 0, 0, 0)
 main.BackgroundTransparency = 1
 main.Visible = true
 
 task.wait(0.1)
 TweenService:Create(main, TweenInfo.new(0.8, Enum.EasingStyle.Back), {
-    Size = UDim2.new(0, 400, 0, 480),
+    Size = UDim2.new(0, 400, 0, 680),
     BackgroundTransparency = 0
 }):Play()
 
--- ========== FUNCIÓN isKeyPressed CORREGIDA (más robusta) ==========
+-- IS KEYPRESSED
 local function isKeyPressed(input)
     if typeof(holdKey) == "EnumItem" then
         if holdKey.EnumType == Enum.UserInputType then
@@ -964,7 +1301,7 @@ local function isKeyPressed(input)
     return false
 end
 
--- Detectar keypress
+-- DETECT KEYPRESS
 UserInputService.InputBegan:Connect(function(input)
     if isKeyPressed(input) then
         keyPressed = true
@@ -993,7 +1330,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Función para detectar cuchillo
+-- FUNCTION THAT DETECTS KNIFE AND ANOTHER MISC
 local function hasKnifeEquipped()
     local character = player.Character
     if not character then return false end
@@ -1018,12 +1355,12 @@ local function getDistanceFromTarget(targetPart)
     return (rootPart.Position - targetPart.Position).Magnitude
 end
 
--- ========== FUNCIÓN getTarget (simple, sin hitbox extender) ==========
+-- ========== FUNCT getTarget ==========
 local function getTarget()
     return mouse.Target
 end
 
--- Función de disparo
+-- FUNCT 
 local function shoot()
     local success = pcall(function()
         mouse1click()
@@ -1079,6 +1416,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Mensajes de bienvenida
-showNotification("TRIGGERBOT", "🚀 Cargado exitosamente", 3, "success")
+
+showNotification("TRIGGERBOT", "🚀 LOADED SUCCEFULLY", 3, "success")
 showNotification("CONTROLES", "CTRL para abrir/cerrar", 3, "info")
+showNotification("DISCORD SERVER", "https://discord.gg/ugg6MqEQTa ", 7, "info")

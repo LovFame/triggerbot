@@ -97,7 +97,7 @@ borderGlowCorner.Parent = borderGlow
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 60)
 title.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-title.Text = "⚡ TRIGGER BOT | FAME ⚡"
+title.Text = "TRIGGERBOT | FAME"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
@@ -1080,9 +1080,16 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- Mensajes de bienvenida
-showNotification("TRIGGER BOT", "🚀 Cargado exitosamente", 3, "success")
+showNotification("TRIGGERBOT", "🚀 Cargado exitosamente", 3, "success")
 showNotification("CONTROLES", "CTRL para abrir/cerrar", 3, "info")
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/thefamewebsite/LOADERS/refs/heads/main/hitboxext))()
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/thefamewebsite/LOADERS/refs/heads/main/hitboxext"))()
+end)
 
-        showNotification("Hitbox extender", "Cargado exitosamente", 3, "success")
+if success then
+    showNotification("Hitbox Extender", "✅ Cargado correctamente", 3, "success")
+else
+    warn("Error al cargar Hitbox Extender:", err)
+    showNotification("Hitbox Extender", "❌ Error al cargar", 3, "error")
+end

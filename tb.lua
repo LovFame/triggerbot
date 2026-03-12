@@ -1,5 +1,5 @@
 -- TRIGGERBOT + HITBOX EXPANDER (INTEGRADO)
--- by FAME (MODIFICADO: TRIGGERBOT MEJORADO PARA MÁS JUEGOS)
+-- by FAME (MODIFICADO: DETECCIÓN POR MOUSE.TARGET MEJORADA)
 
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -19,19 +19,14 @@ local precision = 50
 local triggerDelay = 1
 local maxDistance = 500
 
-
 local holdKey = Enum.UserInputType.MouseButton2 
 local keyPressed = false
 local triggerActive = false
 local isSelectingKey = false
 local guiVisible = true
 
--- 
 local notificationDuration = 2
 local currentNotifications = {}
-
--- Shoot control
-local canShoot = true
 
 -- ==================== VARIABLE HITBOX EXPANDER ====================
 getgenv().hitboxEnabled = false
@@ -46,24 +41,18 @@ getgenv().hitboxRefreshInterval = 5
 -- SAVE ORIGINAL SIZE
 local originalSizes = {}
 
--- ==================== FUNCTIONS FL HITBOX EXPANDER ====================
+-- ==================== FUNCTIONS HITBOX EXPANDER ====================
 local function applyHitboxToPlayer(p)
     if not getgenv().hitboxEnabled then return end
     if p == player then return end
     if not p.Character then return end
-
-    -- Team check
-    if getgenv().hitboxTeamcheck and p.Team == player.Team then
-        return
-    end
+    if getgenv().hitboxTeamcheck and p.Team == player.Team then return end
 
     local hrp = p.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
-     
         if not originalSizes[p] then
             originalSizes[p] = hrp.Size
         end
-      
         hrp.Size = Vector3.new(getgenv().hitboxSizeX, getgenv().hitboxSizeY, getgenv().hitboxSizeZ)
         hrp.Transparency = getgenv().hitboxTransparency
         hrp.CanCollide = false
@@ -91,7 +80,6 @@ local function restoreAllOriginal()
     originalSizes = {}
 end
 
--- Newplayers conect
 local function setupHitboxConnections(plr)
     plr.CharacterAdded:Connect(function()
         task.wait(0.1)
@@ -105,7 +93,6 @@ end
 
 Players.PlayerAdded:Connect(setupHitboxConnections)
 
--- Refresh
 coroutine.wrap(function()
     while true do
         if getgenv().hitboxEnabled and getgenv().hitboxRefreshEnabled then
@@ -114,7 +101,6 @@ coroutine.wrap(function()
         task.wait(getgenv().hitboxRefreshInterval)
     end
 end)()
-
 -- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
 gui.Name = "TriggerBotGUI"
@@ -1330,6 +1316,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
+
 local function hasKnifeEquipped()
     local character = player.Character
     if not character then return false end
@@ -1353,24 +1340,29 @@ local function getDistanceFromTarget(targetPart)
     return (rootPart.Position - targetPart.Position).Magnitude
 end
 
--- Obtiene el objetivo mediante raycast (filtro actualizado en cada llamada)
+-- Función para obtener el objetivo usando mouse.Target (similar al triggerbot que funciona)
 local function getTarget()
-    -- Filtro dinámico: excluye a tu personaje actual (si existe)
-    local filter = {player.Character}
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = filter
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    -- Si no hay target, retorna nil
+    if not mouse.Target then return nil end
 
-    local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
-    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * maxDistance, raycastParams)
-    if result then
-        return result.Instance
-    end
-    -- Fallback a mouse.Target (menos preciso, pero útil en algunos casos)
-    return mouse.Target
+    local target = mouse.Target
+    local model = target:FindFirstAncestorOfClass("Model")
+    if not model then return nil end
+
+    local plr = Players:GetPlayerFromCharacter(model)
+    if not plr or plr == player then return nil end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return nil end
+
+    -- Verificar distancia
+    local distance = getDistanceFromTarget(target)
+    if distance > maxDistance then return nil end
+
+    return target
 end
 
--- Función de disparo ultra compatible (intenta múltiples métodos)
+-- Función de disparo mejorada (intenta múltiples métodos)
 local function shoot()
     -- Método 1: mouse1click
     local success = pcall(mouse1click)
@@ -1417,13 +1409,21 @@ local function shoot()
     end)
 end
 
--- ==================== LOOP PRINCIPAL ====================
+-- ==================== LOOP PRINCIPAL (basado en mouse.Target) ====================
 local lastShotTime = 0
+local mousePressed = false
 
 RunService.Heartbeat:Connect(function()
     -- Solo si está activado y la tecla está presionada
     local shouldTrigger = enabled and triggerActive
-    if not shouldTrigger then return end
+    if not shouldTrigger then
+        -- Si no debe disparar, asegurarse de soltar el mouse si estaba presionado
+        if mousePressed then
+            mouse1release()
+            mousePressed = false
+        end
+        return
+    end
 
     -- Control de cadencia
     local currentTime = tick()
@@ -1431,35 +1431,46 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
-    -- Obtener objetivo
+    -- Obtener objetivo mediante mouse.Target
     local target = getTarget()
-    if not target then return end
+    if target then
+        -- Verificar knife check
+        if knifeCheck and hasKnifeEquipped() then
+            -- Si tiene cuchillo, no dispara
+            if mousePressed then
+                mouse1release()
+                mousePressed = false
+            end
+            return
+        end
 
-    local model = target.Parent
-    if not model then return end
+        -- Aplicar precisión
+        if math.random(1, 100) <= precision then
+            -- Disparar
+            shoot()
+            lastShotTime = currentTime
+            mousePressed = true
+        end
+    else
+        -- Si no hay objetivo, soltar el mouse si estaba presionado
+        if mousePressed then
+            mouse1release()
+            mousePressed = false
+        end
+    end
+end)
 
-    -- Distancia
-    local distance = getDistanceFromTarget(target)
-    if distance > maxDistance then return end
-
-    -- Verificar que sea un enemigo vivo
-    local hum = model:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return end
-
-    local plr = Players:GetPlayerFromCharacter(model)
-    if not plr or plr == player then return end
-
-    -- Check de cuchillo
-    if knifeCheck and hasKnifeEquipped() then return end
-
-    -- Precisión aleatoria
-    if math.random(1, 100) <= precision then
-        shoot()
-        lastShotTime = currentTime
+-- Asegurar soltar el mouse al desactivar
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
+        if mousePressed then
+            mouse1release()
+            mousePressed = false
+        end
     end
 end)
 
 -- ==================== NOTIFICACIONES FINALES ====================
-showNotification("TRIGGERBOT", "🚀 VERSIÓN RESISTENTE A MUERTES", 3, "success")
+showNotification("TRIGGERBOT", "🚀 VERSIÓN MEJORADA (MOUSE.TARGET)", 3, "success")
 showNotification("CONTROLES", "CTRL para abrir/cerrar", 3, "info")
 showNotification("DISCORD SERVER", "https://discord.gg/ugg6MqEQTa ", 7, "info")

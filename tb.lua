@@ -1,5 +1,5 @@
 -- TRIGGERBOT + HITBOX EXPANDER (INTEGRADO)
--- by FAME
+-- by FAME (MODIFICADO: TRIGGERBOT MEJORADO PARA MÁS JUEGOS)
 
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -1354,35 +1354,76 @@ local function getDistanceFromTarget(targetPart)
     local rootPart = character.HumanoidRootPart
     return (rootPart.Position - targetPart.Position).Magnitude
 end
-
--- ========== FUNCT getTarget ==========
+-- ========== FUNCIÓN DE DETECCIÓN MEJORADA ==========
 local function getTarget()
+    -- Intenta primero con raycast desde la cámara (más preciso)
+    local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {player.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * maxDistance, raycastParams)
+    if result then
+        return result.Instance
+    end
+    -- Si falla, usa el método tradicional (mouse.Target)
     return mouse.Target
 end
 
--- FUNCT 
+-- ========== ULTRA COMPATIBLE ==========
 local function shoot()
-    local success = pcall(function()
-        mouse1click()
+    local success = false
+
+    -- MÉTODO 1: mouse1click 
+    success = pcall(mouse1click)
+    if success then return end
+
+    -- MÉTODO 2: VirtualInputManager
+    success = pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
+        task.wait(0.01)
+        VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
     end)
-    
-    if not success then
-        pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
-            task.wait(0.01)
-            VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
-        end)
-    end
-    
-    pcall(function()
+    if success then return end
+
+    -- MÉTODO 3
+    success = pcall(function()
         UserInputService:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
         task.wait(0.01)
         UserInputService:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
     end)
+    if success then return end
+
+    -- MÉTODO 4
+    local character = player.Character
+    if character then
+        local tool = character:FindFirstChildOfClass("Tool")
+        if tool then
+            -- Intenta métodos comunes en tools
+            pcall(function() tool:Activate() end)
+            pcall(function() tool:Click() end)  -- Algunos usan Click
+            -- Busca remotas comunes
+            local remoteNames = {"Fire", "Shoot", "Remote", "WeaponRemote", "Activate"}
+            for _, name in ipairs(remoteNames) do
+                local remote = tool:FindFirstChild(name)
+                if remote and remote:IsA("RemoteEvent") then
+                    pcall(function() remote:FireServer() end)
+                end
+            end
+        end
+    end
+
+    -- MÉTODO 5
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        task.wait(0.01)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    end)
 end
 
+-- Variable para controlar el tiempo del último disparo
 local lastShotTime = 0
 
+-- Loop principal del triggerbot
 RunService.Heartbeat:Connect(function()
     local shouldTrigger = enabled and triggerActive
     
@@ -1415,7 +1456,6 @@ RunService.Heartbeat:Connect(function()
         lastShotTime = currentTime
     end
 end)
-
 
 showNotification("TRIGGERBOT", "🚀 LOADED SUCCEFULLY", 3, "success")
 showNotification("CONTROLES", "CTRL para abrir/cerrar", 3, "info")

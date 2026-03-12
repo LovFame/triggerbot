@@ -1330,11 +1330,9 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- FUNCTION THAT DETECTS KNIFE AND ANOTHER MISC
 local function hasKnifeEquipped()
     local character = player.Character
     if not character then return false end
-    
     local tool = character:FindFirstChildOfClass("Tool")
     if tool then
         local toolName = tool.Name:lower()
@@ -1354,30 +1352,31 @@ local function getDistanceFromTarget(targetPart)
     local rootPart = character.HumanoidRootPart
     return (rootPart.Position - targetPart.Position).Magnitude
 end
--- ========== FUNCIÓN DE DETECCIÓN MEJORADA ==========
+
+-- Obtiene el objetivo mediante raycast (filtro actualizado en cada llamada)
 local function getTarget()
-    -- Intenta primero con raycast desde la cámara (más preciso)
-    local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
+    -- Filtro dinámico: excluye a tu personaje actual (si existe)
+    local filter = {player.Character}
     local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {player.Character}
+    raycastParams.FilterDescendantsInstances = filter
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
     local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * maxDistance, raycastParams)
     if result then
         return result.Instance
     end
-    -- Si falla, usa el método tradicional (mouse.Target)
+    -- Fallback a mouse.Target (menos preciso, pero útil en algunos casos)
     return mouse.Target
 end
 
--- ========== ULTRA COMPATIBLE ==========
+-- Función de disparo ultra compatible (intenta múltiples métodos)
 local function shoot()
-    local success = false
-
-    -- MÉTODO 1: mouse1click 
-    success = pcall(mouse1click)
+    -- Método 1: mouse1click
+    local success = pcall(mouse1click)
     if success then return end
 
-    -- MÉTODO 2: VirtualInputManager
+    -- Método 2: VirtualInputManager
     success = pcall(function()
         VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
         task.wait(0.01)
@@ -1385,7 +1384,7 @@ local function shoot()
     end)
     if success then return end
 
-    -- MÉTODO 3
+    -- Método 3: UserInputService
     success = pcall(function()
         UserInputService:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
         task.wait(0.01)
@@ -1393,15 +1392,13 @@ local function shoot()
     end)
     if success then return end
 
-    -- MÉTODO 4
+    -- Método 4: Activar tool actual
     local character = player.Character
     if character then
         local tool = character:FindFirstChildOfClass("Tool")
         if tool then
-            -- Intenta métodos comunes en tools
             pcall(function() tool:Activate() end)
-            pcall(function() tool:Click() end)  -- Algunos usan Click
-            -- Busca remotas comunes
+            pcall(function() tool:Click() end)
             local remoteNames = {"Fire", "Shoot", "Remote", "WeaponRemote", "Activate"}
             for _, name in ipairs(remoteNames) do
                 local remote = tool:FindFirstChild(name)
@@ -1412,7 +1409,7 @@ local function shoot()
         end
     end
 
-    -- MÉTODO 5
+    -- Método 5: Simular tecla (por defecto "E")
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
         task.wait(0.01)
@@ -1420,43 +1417,49 @@ local function shoot()
     end)
 end
 
--- Variable para controlar el tiempo del último disparo
+-- ==================== LOOP PRINCIPAL ====================
 local lastShotTime = 0
 
--- Loop principal del triggerbot
 RunService.Heartbeat:Connect(function()
+    -- Solo si está activado y la tecla está presionada
     local shouldTrigger = enabled and triggerActive
-    
     if not shouldTrigger then return end
-    
+
+    -- Control de cadencia
     local currentTime = tick()
     if currentTime - lastShotTime < (triggerDelay / 1000) then
         return
     end
-    
+
+    -- Obtener objetivo
     local target = getTarget()
     if not target then return end
-    
+
     local model = target.Parent
     if not model then return end
-    
+
+    -- Distancia
     local distance = getDistanceFromTarget(target)
     if distance > maxDistance then return end
-    
+
+    -- Verificar que sea un enemigo vivo
     local hum = model:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
-    
+
     local plr = Players:GetPlayerFromCharacter(model)
     if not plr or plr == player then return end
-    
+
+    -- Check de cuchillo
     if knifeCheck and hasKnifeEquipped() then return end
-    
+
+    -- Precisión aleatoria
     if math.random(1, 100) <= precision then
         shoot()
         lastShotTime = currentTime
     end
 end)
 
-showNotification("TRIGGERBOT", "🚀 LOADED SUCCEFULLY", 3, "success")
+-- ==================== NOTIFICACIONES FINALES ====================
+showNotification("TRIGGERBOT", "🚀 VERSIÓN RESISTENTE A MUERTES", 3, "success")
 showNotification("CONTROLES", "CTRL para abrir/cerrar", 3, "info")
 showNotification("DISCORD SERVER", "https://discord.gg/ugg6MqEQTa ", 7, "info")

@@ -1,6 +1,6 @@
--- TRIGGERBOT + HITBOX EXPANDER (INTEGRADO)
--- by FAME (MODIFICADO: DETECCIÓN POR MOUSE.TARGET MEJORADA)
--- FIX: MODO TOGGLE FUNCIONA + SIN NOTIS DEL TRIGGER
+-- TRIGGERBOT + HITBOX EXPANDER
+-- by FAME
+-- FIX: TOGGLE
 
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -125,7 +125,7 @@ main.ClipsDescendants = true
 main.ZIndex = 2
 main.Visible = true
 
---
+
 local shadow = Instance.new("ImageLabel")
 shadow.Size = UDim2.new(1, 30, 1, 30)
 shadow.Position = UDim2.new(0, -15, 0, -15)
@@ -321,7 +321,7 @@ triggerLineCorner.Parent = triggerLineGlow
 local triggerLabel = Instance.new("TextLabel")
 triggerLabel.Size = UDim2.new(1, -40, 1, 0)
 triggerLabel.BackgroundTransparency = 1
-triggerLabel.Text = "🐱‍👤 TRIGGER BOT"
+triggerLabel.Text = "⚔ TRIGGER BOT"
 triggerLabel.TextColor3 = Color3.fromRGB(0, 150, 255)
 triggerLabel.Font = Enum.Font.GothamBold
 triggerLabel.TextSize = 20
